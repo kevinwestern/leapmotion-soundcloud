@@ -1,9 +1,9 @@
 Hi {{user.username}}!
 <img ng-src="{{user.avatarUrl}}" alt="user avatar image"><br>
 
-<span ng-hide="user.playlists.length">You have no playlists :(</span>
 
-<div ng-repeat="song in user.songs" class="song-box" ng-class="{selected: selectedSong == song}">
-  <span>{{song.title}}</span><br>
-  <img ng-src="{{song.artwork_url}}">
+<div class="row" ng-repeat="row in user.songs">
+  <div ng-repeat="song in row" class="col-lg-3" ng-class="{selected: selectedSong == song}">
+    <track track="song"></track>
+  </div>
 </div>

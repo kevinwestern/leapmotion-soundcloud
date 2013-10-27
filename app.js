@@ -1,5 +1,26 @@
 var tunes = angular.module('tunes', ['ngRoute']);
 
+tunes.filter('ellipses', function() {
+  return function(str, length) {
+    // plus 3 for the ellipses
+    if (str.length <= length + 3) {
+      return str;
+    }
+    return str.substring(0, length) + '...';
+  };
+});
+
+tunes.directive('track', function() {
+  return {
+    scope: {
+      'track': '='
+    },
+    template: "<div class='track'>" +
+      "<h3 class='title'>{{track.title | ellipses:25}}</h3>" +
+      "<img ng-src='{{track.artwork_url}}''>"
+  };
+});
+
 tunes.factory('scloud', ['$q', function($q) {
   var deferred = $q.defer();
 
@@ -23,6 +44,7 @@ tunes.controller('HomeCtrl', ['$scope', 'scloud', function($scope, scloud) {
 
   var currentSound = null;
   var selectedSongIndex = 0;
+  var totalSongCount = 0;
 
   scloud.then(function(me) {
     $scope.user.username = me.username;
@@ -30,13 +52,24 @@ tunes.controller('HomeCtrl', ['$scope', 'scloud', function($scope, scloud) {
     SC.get('/playlists', {user_id: me.id}, function(playlists) {
       $scope.$apply(function() {
         var songs = [];
+        var songCount = 0;
+        var buffer = [];
+        totalSongCount = 0;
         playlists.forEach(function(playlist) {
           playlist.tracks.forEach(function(track) {
-            songs.push(track);
+            buffer.push(track);
+            songCount++;
+            totalSongCount++;
+            if (songCount == 4) {
+              songs.push(buffer.slice(0));
+              songCount = 0;
+              buffer = [];
+            }
           });
-        })
+        });
+        songs.push(buffer.slice(0));
         $scope.user.songs = songs;
-        $scope.selectedSong = songs[0];
+        $scope.selectedSong = songs[0][0];
         selectedSongIndex = 0;
       });
     });
@@ -75,7 +108,7 @@ tunes.controller('HomeCtrl', ['$scope', 'scloud', function($scope, scloud) {
     var isLeftDir = gesture.direction[0] < 0;
     // out of bounds
     if ((isLeftDir && selectedSongIndex == 0) ||
-      (!isLeftDir && selectedSongIndex == $scope.user.songs.length - 1)) {
+      (!isLeftDir && selectedSongIndex == totalSongCount - 1)) {
       return;
     }
     if (isLeftDir) {
@@ -87,14 +120,18 @@ tunes.controller('HomeCtrl', ['$scope', 'scloud', function($scope, scloud) {
       swipe = 0;
       selectedSongIndex = selectedSongIndex + (isLeftDir ? -1 : 1);
       $scope.$apply(function() {
-        $scope.selectedSong = $scope.user.songs[selectedSongIndex];
+        var r = parseInt(selectedSongIndex / 4, 10);
+        var c = selectedSongIndex % 4;
+        $scope.selectedSong = $scope.user.songs[r][c];
       });
     }
   };
   ctrl.on('frame', function(frame) {
     frame.gestures.forEach(function(gesture) {
       if (gesture.type == 'screenTap') {
-        play($scope.user.songs[selectedSongIndex]);
+        var r = parseInt(selectedSongIndex / 4, 10);
+        var c = selectedSongIndex % 4;
+        play($scope.user.songs[r][c]);
       }
       else if (gesture.type == 'circle') {
         onCircle(gesture);
